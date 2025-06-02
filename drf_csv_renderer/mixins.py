@@ -3,7 +3,7 @@ from django.http import HttpResponse, StreamingHttpResponse
 from rest_framework import status
 from rest_framework.response import Response
 
-from renderers import CSVRenderer, StreamingCSVRenderer, BaseCSVRenderer
+from drf_csv_renderer.renderers import CSVRenderer, StreamingCSVRenderer, BaseCSVRenderer
 
 
 class CSVConfigurationMixin:

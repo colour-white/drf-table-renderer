@@ -1,6 +1,6 @@
 [project]
 name = "drf-csv-renderer"
-version = "0.3.0"
+version = "0.1.1"
 description = "Django REST Framework CSV renderer with configurable field flattening"
 readme = "README.md"
 license = { text = "MIT" }
@@ -13,6 +13,9 @@ maintainers = [
 keywords = ["django", "rest-framework", "CSV", "export", "csv"]
 
 requires-python = ">=3.12"
+dependencies = [
+    "djangorestframework>=3.16.0",
+]
 
 [build-system]
 requires = ["hatchling"]

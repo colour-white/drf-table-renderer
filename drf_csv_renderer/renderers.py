@@ -4,7 +4,7 @@ import json
 from typing import List, Dict, Any, Iterator, Optional, Union
 from rest_framework import renderers
 
-from utilities import DataFlattener, FieldnameManager
+from drf_csv_renderer.utilities import DataFlattener, FieldnameManager
 
 
 class BaseCSVRenderer(renderers.BaseRenderer):
