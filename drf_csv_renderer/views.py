@@ -5,7 +5,7 @@ from rest_framework import generics
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from mixins import CSVResponseMixin
+from drf_csv_renderer.mixins import CSVResponseMixin
 
 
 class CSVListView(CSVResponseMixin, generics.ListAPIView):

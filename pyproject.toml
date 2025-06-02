@@ -1,6 +1,6 @@
 [project]
 name = "drf-csv-renderer"
-version = "0.2.0"
+version = "0.3.0"
 description = "Django REST Framework CSV renderer with configurable field flattening"
 readme = "README.md"
 license = { text = "MIT" }
