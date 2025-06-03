@@ -1,7 +1,6 @@
 from typing import Type, Optional, Dict, Any
 from django.http import HttpResponse, StreamingHttpResponse
 from rest_framework import status
-from rest_framework.response import Response
 
 from drf_csv_renderer.renderers import CSVRenderer, StreamingCSVRenderer, BaseCSVRenderer
 
@@ -14,7 +13,7 @@ class CSVConfigurationMixin:
     csv_renderer_class: Type[CSVRenderer] = CSVRenderer
     csv_streaming_renderer_class: Type[StreamingCSVRenderer] = StreamingCSVRenderer
     csv_flatten_nested: bool = True
-    csv_preserve_lists: bool = True  # NEW: Option to preserve lists
+    csv_preserve_lists: bool = True
     csv_nested_separator: str = "__"
     csv_writer_options: Dict = None
 
@@ -51,7 +50,7 @@ class CSVResponseMixin(CSVConfigurationMixin):
     """Mixin that provides CSV response functionality."""
 
     def create_csv_response(
-        self, data: Any, status_code: int = status.HTTP_200_OK
+            self, data: Any, status_code: int = status.HTTP_200_OK
     ) -> HttpResponse | StreamingHttpResponse:
         """Create appropriate CSV response based on configuration."""
         renderer = self.get_csv_renderer()
@@ -63,18 +62,22 @@ class CSVResponseMixin(CSVConfigurationMixin):
             return self._create_standard_response(data, renderer, filename, status_code)
 
     def _create_standard_response(
-        self, data: Any, renderer: CSVRenderer, filename: str, status_code: int
-    ) -> Response:
+            self, data: Any, renderer: CSVRenderer, filename: str, status_code: int
+    ) -> HttpResponse:
         """Create standard CSV response."""
         rendered_content = renderer.render(data)
-        response = Response(
-            rendered_content, status=status_code, content_type=renderer.media_type
+
+        # Use Django's HttpResponse directly, not DRF's Response
+        response = HttpResponse(
+            rendered_content,
+            content_type=renderer.media_type,
+            status=status_code
         )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
     def _create_streaming_response(
-        self, data: Any, renderer: StreamingCSVRenderer, filename: str
+            self, data: Any, renderer: StreamingCSVRenderer, filename: str
     ) -> StreamingHttpResponse:
         """Create streaming CSV response."""
         csv_stream = renderer.render(data)
