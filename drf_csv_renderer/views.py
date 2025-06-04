@@ -1,9 +1,8 @@
 from typing import Any, List, Dict
 
-from django.http import StreamingHttpResponse
+from django.http import StreamingHttpResponse, HttpResponse
 from rest_framework import generics
 from rest_framework.request import Request
-from rest_framework.response import Response
 
 from drf_csv_renderer.mixins import CSVResponseMixin
 
@@ -11,7 +10,7 @@ from drf_csv_renderer.mixins import CSVResponseMixin
 class CSVListView(CSVResponseMixin, generics.ListAPIView):
     """List view with CSV export functionality."""
 
-    def list(self, request: Request, *args, **kwargs) -> Response | StreamingHttpResponse:
+    def list(self, request: Request, *args, **kwargs) -> HttpResponse | StreamingHttpResponse:
         """Override to return CSV response."""
         data = self.get_csv_data()
         return self.create_csv_response(data)
@@ -68,7 +67,7 @@ class CSVListView(CSVResponseMixin, generics.ListAPIView):
 class CSVGenericView(CSVResponseMixin, generics.GenericAPIView):
     """Generic view for custom CSV responses."""
 
-    def get(self, request: Request, *args, **kwargs) -> Response | StreamingHttpResponse:
+    def get(self, request: Request, *args, **kwargs) -> HttpResponse | StreamingHttpResponse:
         """Handle GET requests."""
         data = self.get_csv_data()
         return self.create_csv_response(data)

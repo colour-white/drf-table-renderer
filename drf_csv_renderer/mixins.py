@@ -1,7 +1,6 @@
 from typing import Type, Optional, Dict, Any
 from django.http import HttpResponse, StreamingHttpResponse
 from rest_framework import status
-from rest_framework.response import Response
 
 from drf_csv_renderer.renderers import CSVRenderer, StreamingCSVRenderer, BaseCSVRenderer
 
@@ -70,7 +69,7 @@ class CSVResponseMixin(CSVConfigurationMixin):
 
     def _create_standard_response(
             self, data: Any, renderer: CSVRenderer, filename: str, status_code: int
-    ) -> Response:
+    ) -> HttpResponse:
         """Create standard CSV response."""
         # Apply row limit for non-streaming responses
         rows_count = self.get_csv_rows_count()
@@ -78,8 +77,12 @@ class CSVResponseMixin(CSVConfigurationMixin):
             data = data[:rows_count]
 
         rendered_content = renderer.render(data)
-        response = Response(
-            rendered_content, status=status_code, content_type=renderer.media_type
+
+        # Use HttpResponse directly to avoid DRF's response processing
+        response = HttpResponse(
+            rendered_content,
+            content_type=renderer.media_type,
+            status=status_code
         )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
