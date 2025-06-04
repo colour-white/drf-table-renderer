@@ -52,8 +52,13 @@ class CSVListView(CSVResponseMixin, generics.ListAPIView):
 
         for obj in iterator:
             serializer = serializer_class(obj, context=self.get_serializer_context())
-            # Ensure we're yielding actual data, not the serializer
-            yield serializer.data
+            # Make sure we yield the serialized data, not the serializer object
+            data = serializer.data
+
+            # Debug: Print what we're yielding (remove this after debugging)
+            print(f"Yielding data type: {type(data)}, sample: {str(data)[:100]}...")
+
+            yield data
 
     def _get_values_stream(self, queryset):
         """Generator that yields queryset values one by one."""

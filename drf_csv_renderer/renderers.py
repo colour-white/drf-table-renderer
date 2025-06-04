@@ -122,7 +122,18 @@ class StreamingCSVRenderer(BaseCSVRenderer):
         first_batch = []
         try:
             for _ in range(self.sample_size):
-                first_batch.append(next(data_iter))
+                item = next(data_iter)
+                # Ensure we have a proper dictionary
+                if hasattr(item, 'items'):  # Duck typing for dict-like objects
+                    first_batch.append(dict(item))  # Convert to regular dict
+                else:
+                    # Handle edge cases
+                    if hasattr(item, '__dict__'):
+                        first_batch.append(item.__dict__)
+                    elif hasattr(item, 'data'):
+                        first_batch.append(dict(item.data))
+                    else:
+                        continue
         except StopIteration:
             pass
 
@@ -139,10 +150,21 @@ class StreamingCSVRenderer(BaseCSVRenderer):
         yield output.getvalue().encode(self.charset)
         self._reset_buffer(output)
 
+        # Process first batch
         for item in first_batch:
             yield from self._process_and_yield_item(item, fieldnames, writer, output)
 
+        # Process remaining items
         for item in data_iter:
+            # Ensure we have a proper dictionary
+            if hasattr(item, 'items'):  # Duck typing for dict-like objects
+                item = dict(item)  # Convert to regular dict
+            elif hasattr(item, '__dict__'):
+                item = item.__dict__
+            elif hasattr(item, 'data'):
+                item = dict(item.data)
+            else:
+                continue
             yield from self._process_and_yield_item(item, fieldnames, writer, output)
 
     def _determine_fieldnames_from_batch(self, batch: List[Any]) -> List[str]:
