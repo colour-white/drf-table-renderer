@@ -21,7 +21,6 @@ class CSVListView(CSVResponseMixin, generics.ListAPIView):
         """Get data for CSV export."""
         queryset = self.filter_queryset(self.get_queryset())
 
-        # Apply row count limit at the queryset level for better performance
         row_count = self.get_csv_row_count()
         if row_count is not None and hasattr(queryset, "__getitem__"):
             queryset = queryset[:row_count]

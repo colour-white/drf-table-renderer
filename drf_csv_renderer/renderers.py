@@ -124,8 +124,8 @@ class StreamingCSVRenderer(BaseCSVRenderer):
             for _ in range(self.sample_size):
                 item = next(data_iter)
                 # Ensure we have a proper dictionary
-                if hasattr(item, "items"):  # Duck typing for dict-like objects
-                    first_batch.append(dict(item))  # Convert to regular dict
+                if hasattr(item, "items"):
+                    first_batch.append(dict(item))
                 else:
                     # Handle edge cases
                     if hasattr(item, "__dict__"):
@@ -150,15 +150,12 @@ class StreamingCSVRenderer(BaseCSVRenderer):
         yield output.getvalue().encode(self.charset)
         self._reset_buffer(output)
 
-        # Process first batch
         for item in first_batch:
             yield from self._process_and_yield_item(item, fieldnames, writer, output)
 
-        # Process remaining items
         for item in data_iter:
-            # Ensure we have a proper dictionary
-            if hasattr(item, "items"):  # Duck typing for dict-like objects
-                item = dict(item)  # Convert to regular dict
+            if hasattr(item, "items"):
+                item = dict(item)
             elif hasattr(item, "__dict__"):
                 item = item.__dict__
             elif hasattr(item, "data"):

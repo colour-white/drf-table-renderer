@@ -18,11 +18,11 @@ class CSVConfigurationMixin:
     csv_renderer_class: Type[CSVRenderer] = CSVRenderer
     csv_streaming_renderer_class: Type[StreamingCSVRenderer] = StreamingCSVRenderer
     csv_flatten_nested: bool = True
-    csv_preserve_lists: bool = True  # NEW: Option to preserve lists
+    csv_preserve_lists: bool = True
     csv_nested_separator: str = "__"
     csv_writer_options: Dict = None
-    csv_row_count: Optional[int] = None  # NEW: Row count limit
-    csv_chunk_size: int = 1000  # NEW: Chunk size for iterator() with prefetch_related()
+    csv_row_count: Optional[int] = None
+    csv_chunk_size: int = 1000
 
     def get_csv_filename(self) -> str:
         """Get filename for CSV download."""
@@ -32,7 +32,7 @@ class CSVConfigurationMixin:
 
     def get_csv_row_count(self) -> Optional[int]:
         """Get row count limit from request parameters or class attribute."""
-        # Check if it's passed as a query parameter
+
         if hasattr(self, "request") and self.request:
             try:
                 param_count = self.request.query_params.get("csv_row_count")

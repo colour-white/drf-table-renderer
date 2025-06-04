@@ -34,7 +34,6 @@ class DataFlattener:
         if not self.flatten_enabled:
             return self._handle_non_flattened(data, parent_key)
 
-        # Convert objects to dictionaries
         if hasattr(data, "__dict__"):
             data = data.__dict__
         elif not isinstance(data, dict):
@@ -81,7 +80,6 @@ class DataFlattener:
                 items.extend(self.flatten_data(item, indexed_key).items())
             return items
         else:
-            # Convert to comma-separated string
             return [(key, ", ".join(str(v) for v in value))]
 
 
