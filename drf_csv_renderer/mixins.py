@@ -1,6 +1,7 @@
 from typing import Type, Optional, Dict, Any
 from django.http import HttpResponse, StreamingHttpResponse
 from rest_framework import status
+from rest_framework.response import Response
 
 from drf_csv_renderer.renderers import CSVRenderer, StreamingCSVRenderer, BaseCSVRenderer
 
@@ -16,8 +17,8 @@ class CSVConfigurationMixin:
     csv_preserve_lists: bool = True  # NEW: Option to preserve lists
     csv_nested_separator: str = "__"
     csv_writer_options: Dict = None
-    csv_rows_count: Optional[int] = None  # NEW: Limit number of rows
-    csv_streaming_chunk_size: int = 1000  # NEW: Chunk size for streaming with prefetch_related
+    csv_row_count: Optional[int] = None  # NEW: Row count limit
+    csv_chunk_size: int = 1000  # NEW: Chunk size for iterator() with prefetch_related()
 
     def get_csv_filename(self) -> str:
         """Get filename for CSV download."""
@@ -25,9 +26,19 @@ class CSVConfigurationMixin:
             return self.csv_filename
         return f"{self.__class__.__name__.lower().replace('view', '')}.csv"
 
-    def get_csv_rows_count(self) -> Optional[int]:
-        """Get the maximum number of rows to export."""
-        return self.csv_rows_count
+    def get_csv_row_count(self) -> Optional[int]:
+        """Get row count limit from request parameters or class attribute."""
+        # Check if it's passed as a query parameter
+        if hasattr(self, 'request') and self.request:
+            try:
+                param_count = self.request.query_params.get('csv_row_count')
+                if param_count is not None:
+                    return int(param_count)
+            except (ValueError, TypeError):
+                pass
+
+        # Fall back to class attribute
+        return self.csv_row_count
 
     def get_csv_renderer(self) -> BaseCSVRenderer:
         """Get configured CSV renderer instance."""
@@ -59,6 +70,11 @@ class CSVResponseMixin(CSVConfigurationMixin):
             self, data: Any, status_code: int = status.HTTP_200_OK
     ) -> HttpResponse | StreamingHttpResponse:
         """Create appropriate CSV response based on configuration."""
+        # Apply row count limit if specified
+        row_count = self.get_csv_row_count()
+        if row_count is not None:
+            data = self._limit_data(data, row_count)
+
         renderer = self.get_csv_renderer()
         filename = self.get_csv_filename()
 
@@ -67,22 +83,41 @@ class CSVResponseMixin(CSVConfigurationMixin):
         else:
             return self._create_standard_response(data, renderer, filename, status_code)
 
+    def _limit_data(self, data: Any, row_count: int) -> Any:
+        """Limit data to specified row count."""
+        if row_count <= 0:
+            return []
+
+        if hasattr(data, '__iter__') and not isinstance(data, (str, bytes, dict)):
+            # Handle iterables (including generators)
+            if hasattr(data, '__getitem__'):
+                # List-like objects
+                return data[:row_count]
+            else:
+                # Generators or other iterators
+                return self._limit_iterator(data, row_count)
+        elif isinstance(data, list):
+            return data[:row_count]
+        else:
+            # Single item - return as is if row_count > 0
+            return data
+
+    def _limit_iterator(self, iterator, row_count: int):
+        """Create a limited iterator from another iterator."""
+        count = 0
+        for item in iterator:
+            if count >= row_count:
+                break
+            yield item
+            count += 1
+
     def _create_standard_response(
             self, data: Any, renderer: CSVRenderer, filename: str, status_code: int
-    ) -> HttpResponse:
+    ) -> Response:
         """Create standard CSV response."""
-        # Apply row limit for non-streaming responses
-        rows_count = self.get_csv_rows_count()
-        if rows_count is not None and isinstance(data, list):
-            data = data[:rows_count]
-
         rendered_content = renderer.render(data)
-
-        # Use HttpResponse directly to avoid DRF's response processing
-        response = HttpResponse(
-            rendered_content,
-            content_type=renderer.media_type,
-            status=status_code
+        response = Response(
+            rendered_content, status=status_code, content_type=renderer.media_type
         )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
@@ -91,22 +126,7 @@ class CSVResponseMixin(CSVConfigurationMixin):
             self, data: Any, renderer: StreamingCSVRenderer, filename: str
     ) -> StreamingHttpResponse:
         """Create streaming CSV response."""
-        # Apply row limit for streaming responses by wrapping the data
-        rows_count = self.get_csv_rows_count()
-        if rows_count is not None:
-            if hasattr(data, "__iter__") and not isinstance(data, (str, bytes, dict)):
-                data = self._limit_iterable(data, rows_count)
-            elif isinstance(data, list):
-                data = data[:rows_count]
-
         csv_stream = renderer.render(data)
         response = StreamingHttpResponse(csv_stream, content_type=renderer.media_type)
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
-
-    def _limit_iterable(self, iterable, limit: int):
-        """Limit an iterable to a specific number of items."""
-        for i, item in enumerate(iterable):
-            if i >= limit:
-                break
-            yield item
