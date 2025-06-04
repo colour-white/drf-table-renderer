@@ -1,8 +1,9 @@
 from typing import Any, List, Dict
 
-from django.http import StreamingHttpResponse, HttpResponse
+from django.http import StreamingHttpResponse
 from rest_framework import generics
 from rest_framework.request import Request
+from rest_framework.response import Response
 
 from drf_csv_renderer.mixins import CSVResponseMixin
 
@@ -10,10 +11,7 @@ from drf_csv_renderer.mixins import CSVResponseMixin
 class CSVListView(CSVResponseMixin, generics.ListAPIView):
     """List view with CSV export functionality."""
 
-    # Configuration for streaming iterator
-    csv_iterator_chunk_size: int = 1000
-
-    def list(self, request: Request, *args, **kwargs) -> HttpResponse | StreamingHttpResponse:
+    def list(self, request: Request, *args, **kwargs) -> Response | StreamingHttpResponse:
         """Override to return CSV response."""
         data = self.get_csv_data()
         return self.create_csv_response(data)
@@ -21,12 +19,21 @@ class CSVListView(CSVResponseMixin, generics.ListAPIView):
     def get_csv_data(self) -> List[Dict[str, Any]] | Any:
         """Get data for CSV export."""
         queryset = self.filter_queryset(self.get_queryset())
+        rows_count = self.get_csv_rows_count()
 
         if self.csv_streaming:
+            # Apply limit to queryset for streaming
+            if rows_count is not None:
+                queryset = queryset[:rows_count]
+
             if hasattr(self, "serializer_class") and self.serializer_class:
                 return self._get_serialized_stream(queryset)
             else:
-                return self._get_values_stream(queryset)
+                return (item for item in queryset.values())
+
+        # For non-streaming, apply limit to queryset
+        if rows_count is not None:
+            queryset = queryset[:rows_count]
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -39,49 +46,29 @@ class CSVListView(CSVResponseMixin, generics.ListAPIView):
         return list(queryset.values())
 
     def _get_serialized_stream(self, queryset):
-        """Generator that yields serialized data dictionaries one by one."""
+        """Generator that yields serialized objects one by one."""
         serializer_class = self.get_serializer_class()
 
-        # Check if queryset has prefetch_related applied
-        if queryset._prefetch_related_lookups:
-            # Use chunk_size when prefetch_related is used
-            iterator = queryset.iterator(chunk_size=self.csv_iterator_chunk_size)
-        else:
-            # Use iterator without chunk_size for simple queries
+        try:
+            # Try to use iterator() without chunk_size first
             iterator = queryset.iterator()
+        except ValueError as e:
+            if "chunk_size must be provided" in str(e):
+                # Fall back to using chunk_size when prefetch_related is used
+                chunk_size = getattr(self, 'csv_streaming_chunk_size', 1000)
+                iterator = queryset.iterator(chunk_size=chunk_size)
+            else:
+                raise
 
         for obj in iterator:
             serializer = serializer_class(obj, context=self.get_serializer_context())
-            # Make sure we yield the serialized data, not the serializer object
-            data = serializer.data
-
-            # Debug: Print what we're yielding (remove this after debugging)
-            print(f"Yielding data type: {type(data)}, sample: {str(data)[:100]}...")
-
-            yield data
-
-    def _get_values_stream(self, queryset):
-        """Generator that yields queryset values one by one."""
-        # For values(), we need to handle prefetch_related differently
-        if queryset._prefetch_related_lookups:
-            # Clear prefetch_related for values() as it's not compatible
-            queryset = queryset.prefetch_related(None)
-
-        # Use iterator for values
-        try:
-            for obj in queryset.iterator(chunk_size=self.csv_iterator_chunk_size):
-                # Convert model instance to dict
-                yield {field.name: getattr(obj, field.name) for field in obj._meta.fields}
-        except ValueError:
-            # Fallback to regular iteration if iterator still fails
-            for obj in queryset:
-                yield {field.name: getattr(obj, field.name) for field in obj._meta.fields}
+            yield serializer.data
 
 
 class CSVGenericView(CSVResponseMixin, generics.GenericAPIView):
     """Generic view for custom CSV responses."""
 
-    def get(self, request: Request, *args, **kwargs) -> HttpResponse | StreamingHttpResponse:
+    def get(self, request: Request, *args, **kwargs) -> Response | StreamingHttpResponse:
         """Handle GET requests."""
         data = self.get_csv_data()
         return self.create_csv_response(data)
@@ -89,3 +76,13 @@ class CSVGenericView(CSVResponseMixin, generics.GenericAPIView):
     def get_csv_data(self) -> List[Dict[str, Any]] | Any:
         """Override this method to provide custom data."""
         raise NotImplementedError("Subclasses must implement get_csv_data() method")
+
+    def apply_rows_limit(self, data: Any) -> Any:
+        """Apply rows limit to data if specified."""
+        rows_count = self.get_csv_rows_count()
+        if rows_count is not None:
+            if isinstance(data, list):
+                return data[:rows_count]
+            elif hasattr(data, "__iter__") and not isinstance(data, (str, bytes, dict)):
+                return (item for i, item in enumerate(data) if i < rows_count)
+        return data
