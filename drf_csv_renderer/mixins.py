@@ -3,7 +3,11 @@ from django.http import HttpResponse, StreamingHttpResponse
 from rest_framework import status
 from rest_framework.response import Response
 
-from drf_csv_renderer.renderers import CSVRenderer, StreamingCSVRenderer, BaseCSVRenderer
+from drf_csv_renderer.renderers import (
+    CSVRenderer,
+    StreamingCSVRenderer,
+    BaseCSVRenderer,
+)
 
 
 class CSVConfigurationMixin:
@@ -29,9 +33,9 @@ class CSVConfigurationMixin:
     def get_csv_row_count(self) -> Optional[int]:
         """Get row count limit from request parameters or class attribute."""
         # Check if it's passed as a query parameter
-        if hasattr(self, 'request') and self.request:
+        if hasattr(self, "request") and self.request:
             try:
-                param_count = self.request.query_params.get('csv_row_count')
+                param_count = self.request.query_params.get("csv_row_count")
                 if param_count is not None:
                     return int(param_count)
             except (ValueError, TypeError):
@@ -67,7 +71,7 @@ class CSVResponseMixin(CSVConfigurationMixin):
     """Mixin that provides CSV response functionality."""
 
     def create_csv_response(
-            self, data: Any, status_code: int = status.HTTP_200_OK
+        self, data: Any, status_code: int = status.HTTP_200_OK
     ) -> HttpResponse | StreamingHttpResponse:
         """Create appropriate CSV response based on configuration."""
         # Apply row count limit if specified
@@ -88,9 +92,9 @@ class CSVResponseMixin(CSVConfigurationMixin):
         if row_count <= 0:
             return []
 
-        if hasattr(data, '__iter__') and not isinstance(data, (str, bytes, dict)):
+        if hasattr(data, "__iter__") and not isinstance(data, (str, bytes, dict)):
             # Handle iterables (including generators)
-            if hasattr(data, '__getitem__'):
+            if hasattr(data, "__getitem__"):
                 # List-like objects
                 return data[:row_count]
             else:
@@ -112,7 +116,7 @@ class CSVResponseMixin(CSVConfigurationMixin):
             count += 1
 
     def _create_standard_response(
-            self, data: Any, renderer: CSVRenderer, filename: str, status_code: int
+        self, data: Any, renderer: CSVRenderer, filename: str, status_code: int
     ) -> Response:
         """Create standard CSV response."""
         rendered_content = renderer.render(data)
@@ -123,7 +127,7 @@ class CSVResponseMixin(CSVConfigurationMixin):
         return response
 
     def _create_streaming_response(
-            self, data: Any, renderer: StreamingCSVRenderer, filename: str
+        self, data: Any, renderer: StreamingCSVRenderer, filename: str
     ) -> StreamingHttpResponse:
         """Create streaming CSV response."""
         csv_stream = renderer.render(data)

@@ -124,13 +124,13 @@ class StreamingCSVRenderer(BaseCSVRenderer):
             for _ in range(self.sample_size):
                 item = next(data_iter)
                 # Ensure we have a proper dictionary
-                if hasattr(item, 'items'):  # Duck typing for dict-like objects
+                if hasattr(item, "items"):  # Duck typing for dict-like objects
                     first_batch.append(dict(item))  # Convert to regular dict
                 else:
                     # Handle edge cases
-                    if hasattr(item, '__dict__'):
+                    if hasattr(item, "__dict__"):
                         first_batch.append(item.__dict__)
-                    elif hasattr(item, 'data'):
+                    elif hasattr(item, "data"):
                         first_batch.append(dict(item.data))
                     else:
                         continue
@@ -157,11 +157,11 @@ class StreamingCSVRenderer(BaseCSVRenderer):
         # Process remaining items
         for item in data_iter:
             # Ensure we have a proper dictionary
-            if hasattr(item, 'items'):  # Duck typing for dict-like objects
+            if hasattr(item, "items"):  # Duck typing for dict-like objects
                 item = dict(item)  # Convert to regular dict
-            elif hasattr(item, '__dict__'):
+            elif hasattr(item, "__dict__"):
                 item = item.__dict__
-            elif hasattr(item, 'data'):
+            elif hasattr(item, "data"):
                 item = dict(item.data)
             else:
                 continue
