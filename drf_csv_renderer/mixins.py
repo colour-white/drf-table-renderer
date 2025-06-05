@@ -120,7 +120,7 @@ class CSVResponseMixin(CSVConfigurationMixin):
     ) -> Response:
         """Create standard CSV response."""
         rendered_content = renderer.render(data)
-        response = Response(
+        response = HttpResponse(
             rendered_content, status=status_code, content_type=renderer.media_type
         )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
